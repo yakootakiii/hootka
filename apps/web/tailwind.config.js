@@ -1,6 +1,13 @@
+import { dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+// Resolved against this file, not process.cwd(), so the build works whether it
+// is started from apps/web or from the repo root (which is what CI does).
+const here = dirname(fileURLToPath(import.meta.url));
+
 /** @type {import('tailwindcss').Config} */
 export default {
-  content: ['./index.html', './src/**/*.{ts,tsx}'],
+  content: [`${here}/index.html`, `${here}/src/**/*.{ts,tsx}`],
   theme: {
     extend: {
       colors: {

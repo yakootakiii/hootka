@@ -9,17 +9,19 @@
     "functions"
   ],
   "scripts": {
-    "dev": "npm run dev -w @hootka/web",
-    "build": "npm run build -w @hootka/core && npm run build -w @hootka/web && npm run build -w @hootka/functions",
+    "dev": "vite apps/web",
+    "build": "npm run build:web && npm run build:functions",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "typecheck": "npm run typecheck -w @hootka/core && npm run typecheck -w @hootka/web && npm run typecheck -w @hootka/functions",
-    "emulators": "npm run build -w @hootka/functions && firebase emulators:start",
+    "typecheck": "tsc --noEmit -p packages/core/tsconfig.json && tsc --noEmit -p apps/web/tsconfig.json && tsc --noEmit -p functions/tsconfig.json",
+    "emulators": "npm run build:functions && firebase emulators:start",
     "loadtest": "tsx tests/load/simulate-players.ts",
     "e2e": "tsx tests/e2e/play-a-game.ts",
     "demo:open": "tsx scripts/demo-game.ts open",
-    "demo:next": "tsx scripts/demo-game.ts advance"
+    "demo:next": "tsx scripts/demo-game.ts advance",
+    "build:web": "tsc --noEmit -p apps/web/tsconfig.json && vite build apps/web",
+    "build:functions": "esbuild functions/src/index.ts --bundle --platform=node --target=node20 --format=esm --outfile=functions/lib/index.js --external:firebase-admin --external:firebase-functions --banner:js=\"import{createRequire}from'module';const require=createRequire(import.meta.url);\""
   },
   "devDependencies": {
     "@types/node": "^20.14.0",

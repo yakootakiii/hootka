@@ -56,6 +56,10 @@ dashboard:
   `apps/web` - the build needs the npm workspace at the root to resolve
   `@hootka/core`.
 - **Framework preset:** Vite (or Other; `vercel.json` overrides it either way).
+- **Node version:** any supported version works. You will see
+  `npm warn EBADENGINE` for `@hootka/functions`, which pins Node 20 because
+  that is the Cloud Functions runtime. It is a warning about a package Vercel
+  never builds, and it is safe to ignore.
 - **Environment Variables** → add these seven, from Firebase console →
   ⚙ Project settings → Your apps → SDK setup and configuration:
 
@@ -79,6 +83,15 @@ the first deploy or redeploy afterwards.
 `vercel.json` rewrites every unmatched path to `index.html`. Without that,
 `/play/<gameId>` would 404 on refresh, and refreshing to rejoin is something
 players do constantly.
+
+The build runs `npm run build:web` from the repo root rather than
+`npm run build -w @hootka/web` from the workspace. npm only installs tool
+binaries into the root `node_modules/.bin`, and running a workspace script
+relies on npm walking up to that ancestor directory - which some npm versions
+do not do, giving `sh: tsc: command not found`. A root script always gets the
+root bin directory on PATH. For the same reason the Tailwind and PostCSS
+configs resolve their paths relative to themselves rather than to
+`process.cwd()`.
 
 ## 3b. Frontend on Firebase Hosting instead
 

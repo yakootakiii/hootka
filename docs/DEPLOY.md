@@ -60,20 +60,22 @@ dashboard:
   `npm warn EBADENGINE` for `@hootka/functions`, which pins Node 20 because
   that is the Cloud Functions runtime. It is a warning about a package Vercel
   never builds, and it is safe to ignore.
-- **Environment Variables** → add these seven, from Firebase console →
-  ⚙ Project settings → Your apps → SDK setup and configuration:
+- **Environment Variables** → click **Import** and upload
+  `apps/web/.env.production.local`, which you fill in first:
 
-  ```
-  VITE_FIREBASE_API_KEY
-  VITE_FIREBASE_AUTH_DOMAIN
-  VITE_FIREBASE_DATABASE_URL
-  VITE_FIREBASE_PROJECT_ID
-  VITE_FIREBASE_STORAGE_BUCKET
-  VITE_FIREBASE_MESSAGING_SENDER_ID
-  VITE_FIREBASE_APP_ID
+  ```bash
+  cp apps/web/.env.example apps/web/.env.production.local
+  # then edit it - each key says where in the Firebase console to find it
   ```
 
-  Do **not** set `VITE_USE_EMULATORS`.
+  The file is gitignored, so it stays on your machine. Filling it in also lets
+  you run a real production build locally with `npm run build`.
+
+  Five keys are required: `API_KEY`, `AUTH_DOMAIN`, `DATABASE_URL`,
+  `PROJECT_ID`, `APP_ID`. `STORAGE_BUCKET` matters only if you attach images to
+  questions, and `MESSAGING_SENDER_ID` is unused by Hootka.
+
+  Do **not** add `VITE_USE_EMULATORS`.
 
 None of these are secret - Vite bakes them into the JavaScript that every
 visitor downloads, by design. Firebase security comes from the rules files, not

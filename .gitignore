@@ -20,3 +20,9 @@ ui-debug.log
 # project the emulators accept without a login. It is ".env.development.local"
 # so that it is loaded in dev and never in a production build.
 !apps/web/.env.development.local
+
+# Your real Firebase project settings. Fill this in and import it to Vercel.
+# Never committed, even though it holds no secrets - it is per-deployment
+# configuration, and committing it would let stale values override the ones
+# set in the hosting dashboard.
+/apps/web/.env.production.local

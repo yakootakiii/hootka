@@ -1,7 +1,10 @@
 node_modules/
 dist/
-lib/
 coverage/
+
+# Anchored to the functions package: a bare "lib/" also matches
+# apps/web/src/lib/, which is source code.
+/functions/lib/
 .firebase/
 *.local
 .env

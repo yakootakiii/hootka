@@ -4,10 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc --noEmit && vite build",
-    "preview": "vite preview",
-    "typecheck": "tsc --noEmit"
+    "dev": "npx vite",
+    "build": "npx tsc --noEmit && npx vite build",
+    "preview": "npx vite preview",
+    "typecheck": "npx tsc --noEmit"
   },
   "dependencies": {
     "canvas-confetti": "^1.9.3",

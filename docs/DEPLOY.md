@@ -84,14 +84,29 @@ the first deploy or redeploy afterwards.
 `/play/<gameId>` would 404 on refresh, and refreshing to rejoin is something
 players do constantly.
 
-The build runs `npm run build:web` from the repo root rather than
-`npm run build -w @hootka/web` from the workspace. npm only installs tool
-binaries into the root `node_modules/.bin`, and running a workspace script
-relies on npm walking up to that ancestor directory - which some npm versions
-do not do, giving `sh: tsc: command not found`. A root script always gets the
-root bin directory on PATH. For the same reason the Tailwind and PostCSS
-configs resolve their paths relative to themselves rather than to
-`process.cwd()`.
+### If the build fails to find its tools
+
+Two failures are possible here, and both come from the same place. npm installs
+tool binaries only into the **root** `node_modules/.bin` - `apps/web/node_modules/.bin`
+does not exist at all - so anything that relies on npm putting an ancestor bin
+directory on PATH is fragile, and npm 11 on Vercel does not do it.
+
+The repo now avoids the problem from both directions:
+
+- every workspace script calls its tool through `npx`, which finds the binary by
+  walking up `node_modules` rather than by reading PATH;
+- `npm run build` means "build the web app" in the repo root *and* in
+  `apps/web`, so it works wherever Vercel runs it;
+- there is a `vercel.json` in both places, and Vercel reads whichever one sits
+  in your configured Root Directory.
+
+So either Root Directory works. If you want to be deliberate, `apps/web` is the
+conventional choice for a monorepo and is what Vercel usually auto-detects;
+leave the Build Command field in the dashboard **empty** so `vercel.json`
+decides, rather than pinning a command that only works in one directory.
+
+For the same reason the Tailwind and PostCSS configs resolve their paths
+relative to themselves rather than to `process.cwd()`.
 
 ## 3b. Frontend on Firebase Hosting instead
 

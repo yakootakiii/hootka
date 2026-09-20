@@ -10,7 +10,7 @@
   ],
   "scripts": {
     "dev": "vite apps/web",
-    "build": "npm run build:web && npm run build:functions",
+    "build": "npm run build:web",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
@@ -21,7 +21,8 @@
     "demo:open": "tsx scripts/demo-game.ts open",
     "demo:next": "tsx scripts/demo-game.ts advance",
     "build:web": "tsc --noEmit -p apps/web/tsconfig.json && vite build apps/web",
-    "build:functions": "esbuild functions/src/index.ts --bundle --platform=node --target=node20 --format=esm --outfile=functions/lib/index.js --external:firebase-admin --external:firebase-functions --banner:js=\"import{createRequire}from'module';const require=createRequire(import.meta.url);\""
+    "build:functions": "esbuild functions/src/index.ts --bundle --platform=node --target=node20 --format=esm --outfile=functions/lib/index.js --external:firebase-admin --external:firebase-functions --banner:js=\"import{createRequire}from'module';const require=createRequire(import.meta.url);\"",
+    "build:all": "npm run build:web && npm run build:functions"
   },
   "devDependencies": {
     "@types/node": "^20.14.0",

@@ -1,0 +1,18 @@
+node_modules/
+dist/
+lib/
+coverage/
+.firebase/
+*.local
+.env
+.env.*
+!.env.example
+.DS_Store
+firebase-debug.log
+firestore-debug.log
+database-debug.log
+ui-debug.log
+
+# Local emulator demo config is committed (.env.local) because it contains no
+# secrets - only the demo- project the emulators accept without a login.
+!apps/web/.env.local

@@ -1,0 +1,50 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  body {
+    @apply bg-cloud font-body text-ink antialiased;
+    margin: 0;
+    /* Players hold phones; stop the answer grid bouncing on over-scroll. */
+    overscroll-behavior-y: none;
+  }
+
+  h1, h2, h3 {
+    @apply font-display;
+  }
+
+  /* Every interactive element keeps a visible focus ring for keyboard players. */
+  :focus-visible {
+    outline: 4px solid #241b3a;
+    outline-offset: 3px;
+  }
+}
+
+@layer components {
+  .btn-chunky {
+    @apply min-h-touch rounded-chunky px-6 py-4 font-display text-xl font-bold
+           shadow-chunky transition-transform duration-75 active:translate-y-[6px]
+           active:shadow-none disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  .card {
+    @apply rounded-chunky bg-white p-6 shadow-lift;
+  }
+}
+
+/* Section 6: heavy motion is a preference, not a requirement. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

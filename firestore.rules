@@ -1,0 +1,31 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isHost() {
+      return request.auth != null
+        && request.auth.token.firebase.sign_in_provider != 'anonymous';
+    }
+
+    function owns(resourceData) {
+      return isHost() && resourceData.ownerUid == request.auth.uid;
+    }
+
+    match /users/{hostUid} {
+      allow read, write: if isHost() && request.auth.uid == hostUid;
+    }
+
+    // Quizzes are private to the teacher who wrote them. Players never read
+    // Firestore at all; correctIndex lives here and reaches the game only
+    // through closeQuestion.
+    match /quizzes/{quizId} {
+      allow read, update, delete: if owns(resource.data);
+      allow create: if isHost() && request.resource.data.ownerUid == request.auth.uid;
+
+      match /questions/{questionId} {
+        allow read, write: if owns(get(/databases/$(database)/documents/quizzes/$(quizId)).data);
+      }
+    }
+  }
+}

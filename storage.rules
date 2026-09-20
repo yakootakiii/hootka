@@ -1,0 +1,20 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Only a signed-in teacher can upload, only into their own folder, only
+    // images, and never more than 2 MB (section 8.6).
+    match /quizzes/{hostUid}/{quizId}/{fileName} {
+      allow read: if true;
+      allow write: if request.auth != null
+        && request.auth.uid == hostUid
+        && request.auth.token.firebase.sign_in_provider != 'anonymous'
+        && request.resource.size < 2 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "name": "hootka",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Hootka - a kid-friendly live quiz game",
+  "workspaces": [
+    "packages/core",
+    "apps/web",
+    "functions"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w @hootka/web",
+    "build": "npm run build -w @hootka/core && npm run build -w @hootka/web && npm run build -w @hootka/functions",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "npm run typecheck -w @hootka/core && npm run typecheck -w @hootka/web && npm run typecheck -w @hootka/functions",
+    "emulators": "npm run build -w @hootka/functions && firebase emulators:start",
+    "loadtest": "tsx tests/load/simulate-players.ts",
+    "e2e": "tsx tests/e2e/play-a-game.ts",
+    "demo:open": "tsx scripts/demo-game.ts open",
+    "demo:next": "tsx scripts/demo-game.ts advance"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "@vitest/coverage-v8": "^2.1.9",
+    "tsx": "^4.23.15",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.9"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

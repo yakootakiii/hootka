@@ -1,0 +1,66 @@
+{
+  "rules": {
+    "gameCodes": {
+      "$code": {
+        ".read": "auth != null",
+        ".write": false
+      }
+    },
+
+    "games": {
+      "$gameId": {
+        ".read": false,
+        ".write": false,
+
+        "meta": {
+          ".read": "auth != null && (data.child('hostUid').val() == auth.uid || root.child('games').child($gameId).child('players').child(auth.uid).exists())",
+          ".write": false
+        },
+
+        "state": {
+          ".read": "auth != null",
+          ".write": false
+        },
+
+        "publicQuestion": {
+          ".read": "auth != null",
+          ".write": false
+        },
+
+        "results": {
+          ".read": "auth != null",
+          ".write": false
+        },
+
+        "playerCount": {
+          ".read": "auth != null",
+          ".write": false
+        },
+
+        "players": {
+          ".read": "auth != null && root.child('games').child($gameId).child('meta').child('hostUid').val() == auth.uid",
+          "$playerUid": {
+            ".read": "auth != null && ($playerUid == auth.uid || root.child('games').child($gameId).child('meta').child('hostUid').val() == auth.uid)",
+            "connected": {
+              ".write": "auth != null && $playerUid == auth.uid",
+              ".validate": "newData.isBoolean()"
+            },
+            "$other": {
+              ".write": false
+            }
+          }
+        },
+
+        "answers": {
+          "$questionIndex": {
+            ".read": false,
+            "$playerUid": {
+              ".read": "auth != null && $playerUid == auth.uid",
+              ".write": false
+            }
+          }
+        }
+      }
+    }
+  }
+}

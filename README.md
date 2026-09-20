@@ -87,8 +87,16 @@ Three rules hold the whole thing together:
 Points: `round(1000 * (1 - (responseTime / 10) / 2))` - about 1000 for an
 instant correct answer, about 500 at the buzzer, 0 for wrong or no answer.
 
+## Deploying
+
+The backend always runs on Firebase; the frontend is static and can go on
+Vercel (`vercel.json` is set up) or Firebase Hosting. Full steps, including the
+authorized-domain step that breaks Google sign-in if you skip it, are in
+`docs/DEPLOY.md`.
+
 ## Documentation
 
+- `docs/DEPLOY.md` - shipping it to a real Firebase project.
 - `docs/DECISIONS.md` - the spec's open questions, answered, plus the judgment
   calls made while building.
 - `docs/TESTING.md` - every item in the spec's testing checklist mapped to the

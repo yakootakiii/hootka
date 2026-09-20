@@ -10,6 +10,12 @@ import { useHostAuth } from '@/hooks/useHostAuth';
 import { Button } from '@/components/Button';
 import { Screen, Wordmark } from '@/components/Layout';
 
+/** Firebase errors read like "FirebaseError: [code=...]: detail"; keep the detail. */
+function describe(cause: unknown, fallback: string): string {
+  if (cause instanceof Error && cause.message) return cause.message.replace(/^.*?:\s*/, '');
+  return fallback;
+}
+
 /** A teacher's quizzes: create, edit, duplicate, delete, play. */
 export function Dashboard() {
   const { host } = useHostAuth();
@@ -25,27 +31,42 @@ export function Dashboard() {
       where('ownerUid', '==', host.uid),
       orderBy('updatedAt', 'desc'),
     );
-    return onSnapshot(quizQuery, (snapshot) => {
-      setQuizzes(snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }) as Quiz));
-    });
+    return onSnapshot(
+      quizQuery,
+      (snapshot) => {
+        setQuizzes(snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }) as Quiz));
+        setError(null);
+      },
+      // A missing composite index or a rules problem lands here; without this
+      // the list just stays empty and looks like "you have no quizzes".
+      (cause) => setError(describe(cause, 'Could not load your quizzes.')),
+    );
   }, [host]);
 
   const createQuiz = async () => {
     if (!host) return;
-    const created = await addDoc(collection(firestore, 'quizzes'), {
-      ownerUid: host.uid,
-      title: 'Untitled quiz',
-      coverImageUrl: null,
-      questionCount: 0,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    });
-    navigate(`/host/quiz/${created.id}`);
+    setBusy('new');
+    setError(null);
+    try {
+      const created = await addDoc(collection(firestore, 'quizzes'), {
+        ownerUid: host.uid,
+        title: 'Untitled quiz',
+        coverImageUrl: null,
+        questionCount: 0,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+      navigate(`/host/quiz/${created.id}`);
+    } catch (cause) {
+      setError(describe(cause, 'Could not create the quiz.'));
+      setBusy(null);
+    }
   };
 
   const duplicateQuiz = async (quiz: Quiz) => {
     if (!host) return;
     setBusy(quiz.id);
+    setError(null);
     try {
       const copy = await addDoc(collection(firestore, 'quizzes'), {
         ownerUid: host.uid,
@@ -61,6 +82,8 @@ export function Dashboard() {
           setDoc(doc(firestore, 'quizzes', copy.id, 'questions', questionDoc.id), questionDoc.data()),
         ),
       );
+    } catch (cause) {
+      setError(describe(cause, 'Could not duplicate the quiz.'));
     } finally {
       setBusy(null);
     }
@@ -69,10 +92,13 @@ export function Dashboard() {
   const deleteQuiz = async (quiz: Quiz) => {
     if (!window.confirm(`Delete "${quiz.title}"? This cannot be undone.`)) return;
     setBusy(quiz.id);
+    setError(null);
     try {
       const questions = await getDocs(collection(firestore, 'quizzes', quiz.id, 'questions'));
       await Promise.all(questions.docs.map((questionDoc) => deleteDoc(questionDoc.ref)));
       await deleteDoc(doc(firestore, 'quizzes', quiz.id));
+    } catch (cause) {
+      setError(describe(cause, 'Could not delete the quiz.'));
     } finally {
       setBusy(null);
     }
@@ -103,7 +129,9 @@ export function Dashboard() {
 
       <div className="flex items-center justify-between">
         <h1 className="font-display text-4xl">My quizzes</h1>
-        <Button onClick={() => void createQuiz()}>New quiz</Button>
+        <Button onClick={() => void createQuiz()} disabled={busy === 'new'}>
+          {busy === 'new' ? 'Creating…' : 'New quiz'}
+        </Button>
       </div>
 
       {error && (
@@ -122,11 +150,27 @@ export function Dashboard() {
               <p className="text-ink-soft">
                 {quiz.questionCount} question{quiz.questionCount === 1 ? '' : 's'}
               </p>
+              {quiz.questionCount === 0 && (
+                // A disabled Play button with no explanation is a dead end, so
+                // say why and point at the way out.
+                <p className="rounded-chunky bg-answer-yellow/30 px-4 py-2 text-sm font-bold">
+                  Add a question before you can play this quiz.
+                </p>
+              )}
               <div className="mt-auto flex flex-wrap gap-2">
-                <Button onClick={() => void play(quiz)} disabled={busy === quiz.id || quiz.questionCount === 0}>
-                  Play
+                <Button
+                  onClick={() => void play(quiz)}
+                  disabled={busy === quiz.id || quiz.questionCount === 0}
+                  title={quiz.questionCount === 0 ? 'Add a question first' : undefined}
+                >
+                  {busy === quiz.id ? 'Starting…' : 'Play'}
                 </Button>
-                <Link to={`/host/quiz/${quiz.id}`} className="btn-chunky bg-white text-ink">Edit</Link>
+                <Link
+                  to={`/host/quiz/${quiz.id}`}
+                  className={`btn-chunky ${quiz.questionCount === 0 ? 'bg-grape-500 text-white' : 'bg-white text-ink'}`}
+                >
+                  {quiz.questionCount === 0 ? 'Add questions' : 'Edit'}
+                </Link>
                 <Button variant="secondary" onClick={() => void duplicateQuiz(quiz)} disabled={busy === quiz.id}>
                   Duplicate
                 </Button>

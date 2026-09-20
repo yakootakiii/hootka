@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import {
   collection, deleteDoc, doc, getDoc, onSnapshot, orderBy, query, serverTimestamp, setDoc, updateDoc, writeBatch,
@@ -30,6 +30,7 @@ export function QuizEditor() {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const syncedCountRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!quizId) return;
@@ -48,6 +49,18 @@ export function QuizEditor() {
       const rows = snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }) as Question);
       setQuestions(rows);
       setSelectedId((current) => current ?? rows[0]?.id ?? null);
+
+      // The dashboard decides whether "Play" is available from questionCount,
+      // so it must match reality. Deriving it from the snapshot rather than
+      // incrementing a counter means a drifted value repairs itself here.
+      //
+      // Note: no hasPendingWrites guard. A listener does not re-fire for a
+      // metadata-only change unless it asked for includeMetadataChanges, so
+      // skipping the local echo would mean never writing the count at all.
+      if (syncedCountRef.current !== rows.length) {
+        syncedCountRef.current = rows.length;
+        void updateDoc(doc(firestore, 'quizzes', quizId), { questionCount: rows.length });
+      }
     });
   }, [quizId]);
 
@@ -61,10 +74,7 @@ export function QuizEditor() {
   const addQuestion = async () => {
     const id = doc(collection(firestore, 'quizzes', quizId, 'questions')).id;
     await setDoc(doc(firestore, 'quizzes', quizId, 'questions', id), blankQuestion(questions.length));
-    await updateDoc(doc(firestore, 'quizzes', quizId), {
-      questionCount: questions.length + 1,
-      updatedAt: serverTimestamp(),
-    });
+    await updateDoc(doc(firestore, 'quizzes', quizId), { updatedAt: serverTimestamp() });
     setSelectedId(id);
   };
 
@@ -82,10 +92,7 @@ export function QuizEditor() {
       .forEach((question, index) => {
         batch.update(doc(firestore, 'quizzes', quizId, 'questions', question.id), { order: index });
       });
-    batch.update(doc(firestore, 'quizzes', quizId), {
-      questionCount: questions.length - 1,
-      updatedAt: serverTimestamp(),
-    });
+    batch.update(doc(firestore, 'quizzes', quizId), { updatedAt: serverTimestamp() });
     await batch.commit();
     if (selectedId === id) setSelectedId(null);
   };

@@ -19,7 +19,8 @@
     "e2e": "tsx tests/e2e/play-a-game.ts",
     "demo:open": "tsx scripts/demo-game.ts open",
     "demo:next": "tsx scripts/demo-game.ts advance",
-    "build:web": "tsc --noEmit -p apps/web/tsconfig.json && vite build apps/web"
+    "build:web": "tsc --noEmit -p apps/web/tsconfig.json && vite build apps/web",
+    "set-service-account": "node scripts/set-service-account.mjs"
   },
   "devDependencies": {
     "@types/node": "^20.14.0",

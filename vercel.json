@@ -5,6 +5,10 @@
   "installCommand": "npm install",
   "rewrites": [
     {
+      "source": "/api/(.*)",
+      "destination": "/api/$1"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
@@ -35,6 +39,12 @@
           "value": "DENY"
         }
       ]
+    }
+  ],
+  "crons": [
+    {
+      "path": "/api/cleanupGames",
+      "schedule": "0 3 * * *"
     }
   ]
 }

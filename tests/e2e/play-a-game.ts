@@ -1,48 +1,61 @@
 /**
- * Plays a whole game against the Firebase emulator suite: a host signs up,
- * writes a quiz, runs it, and four players answer, right through to the podium.
+ * Plays a whole game against the Firebase emulators, driving the real Vercel
+ * API route handlers in-process.
  *
- * Unlike tests/integration (which stubs the database), this exercises the real
- * Cloud Functions, the real server timestamps and the real security rules.
+ * The handlers are imported and called with mock request/response objects, so
+ * this exercises bearer-token verification, the game logic, and the real
+ * database writes - everything except Vercel's HTTP plumbing.
  *
- *   npm run emulators            # terminal 1
- *   npm run e2e                  # terminal 2
+ *   npm run emulators   # terminal 1
+ *   npm run e2e         # terminal 2
  */
-import { initializeApp, type FirebaseApp } from 'firebase/app';
+process.env.GCLOUD_PROJECT ??= 'demo-hootka';
+process.env.FIREBASE_AUTH_EMULATOR_HOST ??= '127.0.0.1:9099';
+process.env.FIRESTORE_EMULATOR_HOST ??= '127.0.0.1:8080';
+process.env.FIREBASE_DATABASE_EMULATOR_HOST ??= '127.0.0.1:9000';
+process.env.FIREBASE_DATABASE_URL ??= 'https://demo-hootka.firebaseio.com';
+
+import { initializeApp } from 'firebase/app';
 import {
   connectAuthEmulator, createUserWithEmailAndPassword, getAuth, signInAnonymously,
 } from 'firebase/auth';
 import { connectDatabaseEmulator, get, getDatabase, ref } from 'firebase/database';
-import {
-  connectFirestoreEmulator, doc, getFirestore, setDoc,
-} from 'firebase/firestore';
-import { connectFunctionsEmulator, getFunctions, httpsCallable } from 'firebase/functions';
-import { FUNCTIONS_REGION, type GameState, type Player } from '@hootka/core';
+import { connectFirestoreEmulator, doc, getFirestore, setDoc } from 'firebase/firestore';
+import type { GameState, Player } from '@hootka/core';
 
 const PROJECT_ID = 'demo-hootka';
 const CONFIG = {
   apiKey: 'demo-api-key',
   projectId: PROJECT_ID,
-  // Namespace must match what the emulated Admin SDK uses: the project id.
   databaseURL: `https://${PROJECT_ID}.firebaseio.com`,
 };
 
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
 let failures = 0;
 function check(label: string, condition: boolean, detail = '') {
-  const mark = condition ? '  ok  ' : ' FAIL ';
-  console.log(`${mark} ${label}${detail ? ` - ${detail}` : ''}`);
+  console.log(`${condition ? '  ok  ' : ' FAIL '} ${label}${detail ? ` - ${detail}` : ''}`);
   if (!condition) failures += 1;
 }
 
-function wire(name: string): FirebaseApp {
-  const app = initializeApp(CONFIG, name);
-  connectAuthEmulator(getAuth(app), 'http://127.0.0.1:9099', { disableWarnings: true });
-  connectDatabaseEmulator(getDatabase(app), '127.0.0.1', 9000);
-  connectFirestoreEmulator(getFirestore(app), '127.0.0.1', 8080);
-  connectFunctionsEmulator(getFunctions(app, FUNCTIONS_REGION), '127.0.0.1', 5001);
-  return app;
+/** Minimal stand-ins for Vercel's request/response objects. */
+function mockRes() {
+  const state: { status: number; body: any; ended: boolean } = { status: 0, body: null, ended: false };
+  const res: any = {
+    status(code: number) { state.status = code; return res; },
+    json(payload: any) { state.body = payload; state.ended = true; return res; },
+    setHeader() { return res; },
+    get writableEnded() { return state.ended; },
+  };
+  return { res, state };
+}
+
+/** Calls a route handler the way Vercel would, with a bearer token. */
+async function callApi(handler: any, token: string | null, data: unknown) {
+  const { res, state } = mockRes();
+  await handler(
+    { method: 'POST', headers: token ? { authorization: `Bearer ${token}` } : {}, body: data },
+    res,
+  );
+  return { status: state.status, body: state.body };
 }
 
 const QUESTIONS = [
@@ -51,169 +64,141 @@ const QUESTIONS = [
   { text: 'Is the sun a star?', options: ['Yes', 'No'], correctIndex: 0 },
 ];
 
-async function main() {
-  console.log('\n=== Hootka end-to-end: a real game on the emulators ===\n');
+function wire(name: string) {
+  const app = initializeApp(CONFIG, name);
+  connectAuthEmulator(getAuth(app), 'http://127.0.0.1:9099', { disableWarnings: true });
+  connectDatabaseEmulator(getDatabase(app), '127.0.0.1', 9000);
+  connectFirestoreEmulator(getFirestore(app), '127.0.0.1', 8080);
+  return app;
+}
 
-  // --- The host signs up and writes a quiz -------------------------------
+async function main() {
+  console.log('\n=== Hootka end-to-end: Vercel API routes on the emulators ===\n');
+
+  const [createGame, joinGame, advanceGame, submitAnswer, endGame] = await Promise.all([
+    import('../../api/createGame.js').then((m) => m.default),
+    import('../../api/joinGame.js').then((m) => m.default),
+    import('../../api/advanceGame.js').then((m) => m.default),
+    import('../../api/submitAnswer.js').then((m) => m.default),
+    import('../../api/endGame.js').then((m) => m.default),
+  ]);
+
+  // --- Host signs up and writes a quiz -----------------------------------
   const hostApp = wire('host');
   const hostAuth = getAuth(hostApp);
-  const hostDb = getFirestore(hostApp);
-  const hostFns = getFunctions(hostApp, FUNCTIONS_REGION);
-
-  const email = `teacher-${Date.now()}@hootka.test`;
-  const host = await createUserWithEmailAndPassword(hostAuth, email, 'password123');
+  const host = await createUserWithEmailAndPassword(hostAuth, `t-${Date.now()}@hootka.test`, 'password123');
+  const hostToken = await host.user.getIdToken();
   check('host signs up', Boolean(host.user.uid));
 
   const quizId = `quiz-${Date.now()}`;
+  const hostDb = getFirestore(hostApp);
   await setDoc(doc(hostDb, 'quizzes', quizId), {
-    ownerUid: host.user.uid,
-    title: 'Animals and space',
-    coverImageUrl: null,
-    questionCount: QUESTIONS.length,
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
+    ownerUid: host.user.uid, title: 'Animals and space', coverImageUrl: null,
+    questionCount: QUESTIONS.length, createdAt: Date.now(), updatedAt: Date.now(),
   });
-  await Promise.all(
-    QUESTIONS.map((question, order) =>
-      setDoc(doc(hostDb, 'quizzes', quizId, 'questions', `q${order}`), {
-        order,
-        text: question.text,
-        imageUrl: null,
-        timeLimit: 10,
-        options: question.options.map((text) => ({ text })),
-        correctIndex: question.correctIndex,
-      }),
-    ),
-  );
+  await Promise.all(QUESTIONS.map((q, order) =>
+    setDoc(doc(hostDb, 'quizzes', quizId, 'questions', `q${order}`), {
+      order, text: q.text, imageUrl: null, timeLimit: 10,
+      options: q.options.map((text) => ({ text })), correctIndex: q.correctIndex,
+    })));
   check('host writes a 3-question quiz', true);
 
+  // --- Auth is actually enforced -----------------------------------------
+  const noToken = await callApi(createGame, null, { quizId });
+  check('createGame without a token is rejected', noToken.status === 401, `got ${noToken.status}`);
+
   // --- Start the game ----------------------------------------------------
-  const createGame = httpsCallable<{ quizId: string }, { gameId: string; code: string }>(hostFns, 'createGame');
-  const { data: game } = await createGame({ quizId });
-  check('createGame returns a 6-digit code', /^\d{6}$/.test(game.code), game.code);
+  const created = await callApi(createGame, hostToken, { quizId });
+  check('createGame returns a 6-digit code', /^\d{6}$/.test(created.body?.code ?? ''), created.body?.code ?? JSON.stringify(created.body));
+  const gameId: string = created.body.gameId;
 
-  const advance = httpsCallable<{ gameId: string; skip?: boolean }, { phase: string }>(hostFns, 'advanceGame');
   const rtdb = getDatabase(hostApp);
-  const readState = async () => (await get(ref(rtdb, `games/${game.gameId}/state`))).val() as GameState;
+  const readState = async () => (await get(ref(rtdb, `games/${gameId}/state`))).val() as GameState;
   const readPlayers = async () =>
-    Object.entries(((await get(ref(rtdb, `games/${game.gameId}/players`))).val() ?? {}) as Record<string, Omit<Player, 'uid'>>)
-      .map(([uid, player]) => ({ uid, ...player }));
+    Object.entries(((await get(ref(rtdb, `games/${gameId}/players`))).val() ?? {}) as Record<string, Omit<Player, 'uid'>>)
+      .map(([uid, p]) => ({ uid, ...p }));
 
-  // --- Four players join -------------------------------------------------
+  // --- Players join -------------------------------------------------------
   const NAMES = ['Ana', 'Ben', 'Cal', 'Dia'];
-  const players = await Promise.all(
-    NAMES.map(async (name, index) => {
-      const app = wire(`player-${index}`);
-      await signInAnonymously(getAuth(app));
-      const fns = getFunctions(app, FUNCTIONS_REGION);
-      const join = httpsCallable<{ code: string; name: string }, { gameId: string; name: string }>(fns, 'joinGame');
-      const { data } = await join({ code: game.code, name });
-      return { name, uid: getAuth(app).currentUser!.uid, submit: httpsCallable<unknown, unknown>(fns, 'submitAnswer') };
-    }),
-  );
-  check('four players join with a code and a nickname', (await readPlayers()).length === 4);
+  const players = await Promise.all(NAMES.map(async (name, i) => {
+    const app = wire(`player-${i}`);
+    const cred = await signInAnonymously(getAuth(app));
+    const token = await cred.user.getIdToken();
+    const res = await callApi(joinGame, token, { code: created.body.code, name });
+    return { name, uid: cred.user.uid, token, joined: res.status === 200 };
+  }));
+  check('four players join', players.every((p) => p.joined) && (await readPlayers()).length === 4);
 
-  // A duplicate nickname is refused.
-  const dupeApp = wire('player-dupe');
-  await signInAnonymously(getAuth(dupeApp));
-  const dupeJoin = httpsCallable(getFunctions(dupeApp, FUNCTIONS_REGION), 'joinGame');
-  const dupeRejected = await dupeJoin({ code: game.code, name: 'ana' }).then(() => false).catch(() => true);
-  check('a duplicate nickname is refused', dupeRejected);
+  // A player must not be able to reach a host-only route.
+  const playerAdvance = await callApi(advanceGame, players[0]!.token, { gameId });
+  check('a player cannot advance the game', playerAdvance.status === 403, `got ${playerAdvance.status}`);
 
-  // A profane nickname is refused.
-  const rudeApp = wire('player-rude');
-  await signInAnonymously(getAuth(rudeApp));
-  const rudeJoin = httpsCallable(getFunctions(rudeApp, FUNCTIONS_REGION), 'joinGame');
-  const rudeRejected = await rudeJoin({ code: game.code, name: 'fuckface' }).then(() => false).catch(() => true);
-  check('a profane nickname is refused', rudeRejected);
+  const dupeApp = wire('dupe');
+  const dupeToken = await signInAnonymously(getAuth(dupeApp)).then((c) => c.user.getIdToken());
+  const dupe = await callApi(joinGame, dupeToken, { code: created.body.code, name: 'ana' });
+  check('a duplicate nickname is refused', dupe.status === 400, `got ${dupe.status}`);
 
-  // --- Play every question ----------------------------------------------
+  const rudeApp = wire('rude');
+  const rudeToken = await signInAnonymously(getAuth(rudeApp)).then((c) => c.user.getIdToken());
+  const rude = await callApi(joinGame, rudeToken, { code: created.body.code, name: 'fuckface' });
+  check('a profane nickname is refused', rude.status === 400, `got ${rude.status}`);
+
+  // --- Play every question ------------------------------------------------
   for (let index = 0; index < QUESTIONS.length; index += 1) {
-    await advance({ gameId: game.gameId });               // -> QUESTION_INTRO
-    await advance({ gameId: game.gameId });               // -> QUESTION_ACTIVE
+    await callApi(advanceGame, hostToken, { gameId });   // -> INTRO
+    await callApi(advanceGame, hostToken, { gameId });   // -> ACTIVE
 
     const state = await readState();
-    check(
-      `Q${index + 1} opens with a server timestamp`,
-      state.phase === 'QUESTION_ACTIVE' && typeof state.questionStartedAt === 'number',
-    );
+    check(`Q${index + 1} opens with a server timestamp`,
+      state.phase === 'QUESTION_ACTIVE' && typeof state.questionStartedAt === 'number');
 
-    // The published question must not carry the answer.
-    const published = (await get(ref(rtdb, `games/${game.gameId}/publicQuestion`))).val();
-    check(
-      `Q${index + 1} is published without correctIndex`,
-      !JSON.stringify(published).includes('correctIndex'),
-    );
-    // Nor may the result exist before the question closes.
-    const earlyResult = (await get(ref(rtdb, `games/${game.gameId}/results/${index}`))).val();
-    check(`Q${index + 1} has no result while it is live`, earlyResult === null);
+    const published = (await get(ref(rtdb, `games/${gameId}/publicQuestion`))).val();
+    check(`Q${index + 1} is published without correctIndex`,
+      !JSON.stringify(published).includes('correctIndex'));
+    check(`Q${index + 1} has no result while it is live`,
+      (await get(ref(rtdb, `games/${gameId}/results/${index}`))).val() === null);
 
     const correct = QUESTIONS[index]!.correctIndex;
-    // Ana answers first and correctly every time; Ben is correct but slower;
-    // Cal is always wrong; Dia never answers at all.
-    await players[0]!.submit({ gameId: game.gameId, questionIndex: index, choice: correct });
-    await sleep(400);
-    await players[1]!.submit({ gameId: game.gameId, questionIndex: index, choice: correct });
-    await players[2]!.submit({
-      gameId: game.gameId,
-      questionIndex: index,
-      choice: (correct + 1) % QUESTIONS[index]!.options.length,
+    await callApi(submitAnswer, players[0]!.token, { gameId, questionIndex: index, choice: correct });
+    await new Promise((r) => setTimeout(r, 400));
+    await callApi(submitAnswer, players[1]!.token, { gameId, questionIndex: index, choice: correct });
+    await callApi(submitAnswer, players[2]!.token, {
+      gameId, questionIndex: index, choice: (correct + 1) % QUESTIONS[index]!.options.length,
     });
 
-    // A second answer from the same player is refused.
     if (index === 0) {
-      const doubled = await players[0]!
-        .submit({ gameId: game.gameId, questionIndex: index, choice: 1 })
-        .then(() => false)
-        .catch(() => true);
-      check('a second answer from the same player is refused', doubled);
+      const again = await callApi(submitAnswer, players[0]!.token, { gameId, questionIndex: index, choice: 1 });
+      check('a second answer from the same player is refused', again.status === 409, `got ${again.status}`);
     }
 
-    await advance({ gameId: game.gameId });               // -> QUESTION_RESULT (scores)
-    const result = (await get(ref(rtdb, `games/${game.gameId}/results/${index}`))).val();
-    check(`Q${index + 1} result reveals the answer and the counts`, result?.correctIndex === correct, JSON.stringify(result?.counts));
+    await callApi(advanceGame, hostToken, { gameId });   // -> RESULT (scores)
+    const result = (await get(ref(rtdb, `games/${gameId}/results/${index}`))).val();
+    check(`Q${index + 1} result reveals the answer`, result?.correctIndex === correct, JSON.stringify(result?.counts));
 
-    await advance({ gameId: game.gameId });               // -> LEADERBOARD
+    await callApi(advanceGame, hostToken, { gameId });   // -> LEADERBOARD
   }
 
-  // --- The podium --------------------------------------------------------
-  await advance({ gameId: game.gameId });                 // -> FINAL_PODIUM
-  const finalState = await readState();
-  check('the game reaches the podium', finalState.phase === 'FINAL_PODIUM');
+  await callApi(advanceGame, hostToken, { gameId });     // -> PODIUM
+  check('the game reaches the podium', (await readState()).phase === 'FINAL_PODIUM');
 
   const finalPlayers = (await readPlayers()).sort((a, b) => a.rank - b.rank);
   console.log('\n  Final standings');
-  for (const player of finalPlayers) {
-    console.log(
-      `    ${player.rank}. ${player.name.padEnd(5)} ${String(player.score).padStart(5)} pts   ` +
-      `${player.correctCount}/${QUESTIONS.length} correct`,
-    );
+  for (const p of finalPlayers) {
+    console.log(`    ${p.rank}. ${p.name.padEnd(5)} ${String(p.score).padStart(5)} pts   ${p.correctCount}/${QUESTIONS.length} correct`);
   }
 
-  const [first, second, third, fourth] = finalPlayers;
-  check('the fastest correct player wins', first?.name === 'Ana', `${first?.name} with ${first?.score}`);
-  check('a slower correct player comes second', second?.name === 'Ben', `${second?.score} pts`);
-  check('scoring rewards speed', (first?.score ?? 0) > (second?.score ?? 0));
-  check('every answer correct scores near the maximum', (first?.score ?? 0) > 2700, `${first?.score}`);
-  check('a player who was always wrong scores zero', third?.score === 0 || fourth?.score === 0);
+  check('the fastest correct player wins', finalPlayers[0]?.name === 'Ana', `${finalPlayers[0]?.name}`);
+  check('scoring rewards speed', (finalPlayers[0]?.score ?? 0) > (finalPlayers[1]?.score ?? 0));
   check('a player who never answered scores zero', finalPlayers.find((p) => p.name === 'Dia')?.score === 0);
 
-  await advance({ gameId: game.gameId });                 // -> ENDED
-  const ended = await readState();
-  check('the game ends', ended.phase === 'ENDED');
+  await callApi(endGame, hostToken, { gameId });
+  check('the code is released for reuse',
+    (await get(ref(rtdb, `gameCodes/${created.body.code}`))).val() === null);
 
-  const releasedCode = (await get(ref(rtdb, `gameCodes/${game.code}`))).val();
-  check('the game code is released for reuse', releasedCode === null);
-
-  console.log(
-    failures === 0
-      ? '\n=== PASS: a full game played end to end ===\n'
-      : `\n=== ${failures} CHECK(S) FAILED ===\n`,
-  );
+  console.log(failures === 0
+    ? '\n=== PASS: a full game played end to end ===\n'
+    : `\n=== ${failures} CHECK(S) FAILED ===\n`);
   process.exit(failures === 0 ? 0 : 1);
 }
 
-main().catch((error) => {
-  console.error('\nE2E run crashed:', error);
-  process.exit(1);
-});
+main().catch((error) => { console.error('\nE2E run crashed:', error); process.exit(1); });

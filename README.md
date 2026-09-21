@@ -13,8 +13,9 @@ packages/core     Pure game logic: scoring, ranking, phases, the nickname
                   filter, the answer guard. No Firebase, no React - which is
                   why it can be tested exhaustively and why the server and the
                   client can never disagree about the rules.
-functions         Cloud Functions (TypeScript). Everything a player must not be
-                  able to forge: joining, answering, scoring, advancing.
+api               Vercel serverless routes (TypeScript). Everything a player
+                  must not be able to forge: joining, answering, scoring,
+                  advancing. Same-origin with the app, so no CORS.
 apps/web          React 18 + Vite + Tailwind + Framer Motion.
 tests             Vitest: unit, integration and component tests, plus the
                   emulator load test.

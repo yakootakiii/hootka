@@ -24,37 +24,32 @@ Then point the repo at it:
 { "projects": { "default": "your-project-id" } }
 ```
 
-## 2. Deploy the backend
+## 2. Deploy the rules
 
-Do this whichever host you pick. **The rules are the security model** - if you
-skip them, your database is wide open or completely shut, depending on what the
+There are no Cloud Functions in this project - the server logic runs as Vercel
+serverless routes in `/api`. Firebase still provides Auth, Firestore, the
+Realtime Database and Storage, and **the rules are the security model**: skip
+them and your database is wide open or completely shut, depending on what the
 console defaulted to.
 
 ```bash
 npm install
 firebase login
-firebase deploy --only functions,database,firestore,storage
+firebase deploy --only firestore,database,storage --project <your-project>
 ```
 
-That ships the eight Cloud Functions, the Realtime Database rules, the Firestore
-rules and indexes, and the Storage rules.
-
-Confirm the functions landed:
-
-```bash
-firebase functions:list
-# expect: advanceGame, cleanupGames, closeQuestion, createGame,
-#         endGame, joinGame, kickPlayer, submitAnswer
-```
+This needs no billing plan. The Spark (free) tier is enough for everything
+Hootka uses on Firebase.
 
 ## 3a. Frontend on Vercel
 
 `vercel.json` in the repo root already sets the build for you. In the Vercel
 dashboard:
 
-- **Root Directory:** leave it at the repository root. Do *not* set it to
-  `apps/web` - the build needs the npm workspace at the root to resolve
-  `@hootka/core`.
+- **Root Directory:** the repository root. It must NOT be `apps/web`: the
+  serverless routes live in `/api` at the root and import shared game logic
+  from `/packages/core`, and Vercel only deploys files inside the root
+  directory.
 - **Framework preset:** Vite (or Other; `vercel.json` overrides it either way).
 - **Node version:** any supported version works. You will see
   `npm warn EBADENGINE` for `@hootka/functions`, which pins Node 20 because
@@ -121,18 +116,27 @@ firebase deploy --only hosting
 For this path put the seven variables in `apps/web/.env.production.local`
 rather than in a dashboard.
 
-## Regions
+## The server routes
 
-Cloud Functions run in `asia-southeast1`, set once in `FUNCTIONS_REGION`
-(`packages/core/src/types.ts`) and used by both the functions and the web
-client. Keep it matching the Realtime Database's region: every function reads
-or writes the live game node, so a function in another continent pays a round
-trip on each one inside a 10-second answer window.
+`/api/*.ts` are Vercel serverless functions - one per operation, sharing the
+game logic in `/api/_lib/game.ts`. They are same-origin with the app, so there
+is no CORS to configure, and the browser sends its Firebase ID token as a
+bearer token which each route verifies with the Admin SDK.
 
-If you ever change it, change only that constant - the client and the functions
-both read it. A mismatch does not fail helpfully: the browser reports it as
-`No 'Access-Control-Allow-Origin' header`, because it is really a 404 for a
-function that does not exist in the region being called.
+Two of them are worth knowing about:
+
+- `submitAnswer` records a choice with a server timestamp and never scores.
+  `closeQuestion` scores every player at once, so all 50 are judged against the
+  same clock.
+- `cleanupGames` replaces the scheduled Cloud Function. `vercel.json` runs it
+  daily at 03:00 UTC and Vercel sends `CRON_SECRET` as a bearer token; nothing
+  else can trigger a bulk delete.
+
+**Function region.** On Vercel's Hobby plan the routes run in one region,
+usually `iad1` (US East), while the Realtime Database is in `asia-southeast1`.
+Every route reads or writes the game node, so each call crosses the Pacific.
+It works, but if games feel sluggish, set the region under Project Settings ->
+Functions to the one nearest your database.
 
 ## 4. Authorize your domain (easy to miss)
 

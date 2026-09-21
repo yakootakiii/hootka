@@ -10,9 +10,7 @@
     "skipLibCheck": true,
     "resolveJsonModule": true,
     "noEmit": true,
-    "paths": {
-      "@hootka/core": ["../packages/core/src/index.ts"]
-    }
+    "types": ["node"]
   },
-  "include": ["src"]
+  "include": ["api"]
 }

@@ -5,8 +5,7 @@
   "description": "Hootka - a kid-friendly live quiz game",
   "workspaces": [
     "packages/core",
-    "apps/web",
-    "functions"
+    "apps/web"
   ],
   "scripts": {
     "dev": "vite apps/web",
@@ -14,18 +13,17 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "typecheck": "tsc --noEmit -p packages/core/tsconfig.json && tsc --noEmit -p apps/web/tsconfig.json && tsc --noEmit -p functions/tsconfig.json",
-    "emulators": "npm run build:functions && firebase emulators:start",
+    "typecheck": "tsc --noEmit -p packages/core/tsconfig.json && tsc --noEmit -p apps/web/tsconfig.json && tsc --noEmit -p tsconfig.api.json",
+    "emulators": "firebase emulators:start",
     "loadtest": "tsx tests/load/simulate-players.ts",
     "e2e": "tsx tests/e2e/play-a-game.ts",
     "demo:open": "tsx scripts/demo-game.ts open",
     "demo:next": "tsx scripts/demo-game.ts advance",
-    "build:web": "tsc --noEmit -p apps/web/tsconfig.json && vite build apps/web",
-    "build:functions": "esbuild functions/src/index.ts --bundle --platform=node --target=node20 --format=esm --outfile=functions/lib/index.js --external:firebase-admin --external:firebase-functions --banner:js=\"import{createRequire}from'module';const require=createRequire(import.meta.url);\"",
-    "build:all": "npm run build:web && npm run build:functions"
+    "build:web": "tsc --noEmit -p apps/web/tsconfig.json && vite build apps/web"
   },
   "devDependencies": {
     "@types/node": "^20.14.0",
+    "@vercel/node": "^13.0.1",
     "@vitest/coverage-v8": "^2.1.9",
     "tsx": "^4.23.15",
     "typescript": "^5.6.3",
@@ -33,5 +31,8 @@
   },
   "engines": {
     "node": ">=20"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.7.0"
   }
 }

@@ -13,6 +13,7 @@ import { initializeApp } from 'firebase/app';
 import { connectAuthEmulator, getAuth, signInAnonymously } from 'firebase/auth';
 import { connectDatabaseEmulator, get, getDatabase, ref } from 'firebase/database';
 import { connectFunctionsEmulator, getFunctions, httpsCallable } from 'firebase/functions';
+import { FUNCTIONS_REGION } from '@hootka/core';
 
 interface Options {
   code: string;
@@ -48,7 +49,7 @@ async function makeBot(index: number, options: Options) {
   const auth = getAuth(app);
   connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });
 
-  const functions = getFunctions(app);
+  const functions = getFunctions(app, FUNCTIONS_REGION);
   connectFunctionsEmulator(functions, '127.0.0.1', 5001);
 
   await signInAnonymously(auth);

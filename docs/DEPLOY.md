@@ -121,6 +121,19 @@ firebase deploy --only hosting
 For this path put the seven variables in `apps/web/.env.production.local`
 rather than in a dashboard.
 
+## Regions
+
+Cloud Functions run in `asia-southeast1`, set once in `FUNCTIONS_REGION`
+(`packages/core/src/types.ts`) and used by both the functions and the web
+client. Keep it matching the Realtime Database's region: every function reads
+or writes the live game node, so a function in another continent pays a round
+trip on each one inside a 10-second answer window.
+
+If you ever change it, change only that constant - the client and the functions
+both read it. A mismatch does not fail helpfully: the browser reports it as
+`No 'Access-Control-Allow-Origin' header`, because it is really a 404 for a
+function that does not exist in the region being called.
+
 ## 4. Authorize your domain (easy to miss)
 
 Firebase console → **Authentication → Settings → Authorized domains** → add your

@@ -11,6 +11,7 @@ import {
 } from 'firebase/auth';
 import { connectDatabaseEmulator, getDatabase } from 'firebase/database';
 import { connectFunctionsEmulator, getFunctions, httpsCallable } from 'firebase/functions';
+import { FUNCTIONS_REGION } from '@hootka/core';
 
 const usingEmulators = import.meta.env.VITE_USE_EMULATORS === 'true';
 const projectId = import.meta.env.VITE_FIREBASE_PROJECT_ID;
@@ -43,7 +44,8 @@ const config: FirebaseOptions = {
 export const app = initializeApp(config);
 export const auth = getAuth(app);
 export const rtdb = getDatabase(app);
-export const functions = getFunctions(app);
+// Region must match the functions' own; a mismatch surfaces as a CORS error.
+export const functions = getFunctions(app, FUNCTIONS_REGION);
 
 export { usingEmulators };
 

@@ -17,7 +17,7 @@ import {
   connectFirestoreEmulator, doc, getFirestore, setDoc,
 } from 'firebase/firestore';
 import { connectFunctionsEmulator, getFunctions, httpsCallable } from 'firebase/functions';
-import type { GameState, Player } from '@hootka/core';
+import { FUNCTIONS_REGION, type GameState, type Player } from '@hootka/core';
 
 const PROJECT_ID = 'demo-hootka';
 const CONFIG = {
@@ -41,7 +41,7 @@ function wire(name: string): FirebaseApp {
   connectAuthEmulator(getAuth(app), 'http://127.0.0.1:9099', { disableWarnings: true });
   connectDatabaseEmulator(getDatabase(app), '127.0.0.1', 9000);
   connectFirestoreEmulator(getFirestore(app), '127.0.0.1', 8080);
-  connectFunctionsEmulator(getFunctions(app), '127.0.0.1', 5001);
+  connectFunctionsEmulator(getFunctions(app, FUNCTIONS_REGION), '127.0.0.1', 5001);
   return app;
 }
 
@@ -58,7 +58,7 @@ async function main() {
   const hostApp = wire('host');
   const hostAuth = getAuth(hostApp);
   const hostDb = getFirestore(hostApp);
-  const hostFns = getFunctions(hostApp);
+  const hostFns = getFunctions(hostApp, FUNCTIONS_REGION);
 
   const email = `teacher-${Date.now()}@hootka.test`;
   const host = await createUserWithEmailAndPassword(hostAuth, email, 'password123');
@@ -105,7 +105,7 @@ async function main() {
     NAMES.map(async (name, index) => {
       const app = wire(`player-${index}`);
       await signInAnonymously(getAuth(app));
-      const fns = getFunctions(app);
+      const fns = getFunctions(app, FUNCTIONS_REGION);
       const join = httpsCallable<{ code: string; name: string }, { gameId: string; name: string }>(fns, 'joinGame');
       const { data } = await join({ code: game.code, name });
       return { name, uid: getAuth(app).currentUser!.uid, submit: httpsCallable<unknown, unknown>(fns, 'submitAnswer') };
@@ -116,14 +116,14 @@ async function main() {
   // A duplicate nickname is refused.
   const dupeApp = wire('player-dupe');
   await signInAnonymously(getAuth(dupeApp));
-  const dupeJoin = httpsCallable(getFunctions(dupeApp), 'joinGame');
+  const dupeJoin = httpsCallable(getFunctions(dupeApp, FUNCTIONS_REGION), 'joinGame');
   const dupeRejected = await dupeJoin({ code: game.code, name: 'ana' }).then(() => false).catch(() => true);
   check('a duplicate nickname is refused', dupeRejected);
 
   // A profane nickname is refused.
   const rudeApp = wire('player-rude');
   await signInAnonymously(getAuth(rudeApp));
-  const rudeJoin = httpsCallable(getFunctions(rudeApp), 'joinGame');
+  const rudeJoin = httpsCallable(getFunctions(rudeApp, FUNCTIONS_REGION), 'joinGame');
   const rudeRejected = await rudeJoin({ code: game.code, name: 'fuckface' }).then(() => false).catch(() => true);
   check('a profane nickname is refused', rudeRejected);
 

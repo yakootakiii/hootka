@@ -139,3 +139,16 @@ export interface LeaderboardEntry {
   lastPoints: number;
   streak: number;
 }
+
+/**
+ * The region Cloud Functions are deployed to and called from.
+ *
+ * This is shared by the client and the functions deliberately: the two must
+ * agree exactly, and a mismatch shows up in the browser as an opaque CORS
+ * error rather than anything mentioning regions.
+ *
+ * Keep it in the same region as the Realtime Database. Every function in this
+ * project reads or writes the live game node, so a function in another
+ * continent pays a round trip on each one, inside a 10-second answer window.
+ */
+export const FUNCTIONS_REGION = 'asia-southeast1';

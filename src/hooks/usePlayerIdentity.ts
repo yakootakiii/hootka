@@ -15,23 +15,45 @@ export interface PlayerSession {
  * security rules can protect their record, and so a refresh reconnects them to
  * the same player rather than creating a second entry.
  */
-export function useAnonymousUid(): { uid: string | null; loading: boolean } {
+export interface AnonymousIdentity {
+  uid: string | null;
+  loading: boolean;
+  /** Set when sign-in failed, so the screen can say why instead of going dead. */
+  error: string | null;
+}
+
+export function useAnonymousUid(): AnonymousIdentity {
   const [uid, setUid] = useState<string | null>(auth.currentUser?.uid ?? null);
   const [loading, setLoading] = useState(!auth.currentUser);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const stop = onAuthStateChanged(auth, (user: User | null) => {
       if (user) {
         setUid(user.uid);
+        setError(null);
         setLoading(false);
-      } else {
-        signInAnonymously(auth).catch(() => setLoading(false));
+        return;
       }
+      signInAnonymously(auth).catch((cause: { code?: string }) => {
+        // Anonymous sign-in being switched off in the Firebase console is the
+        // usual cause, and it used to leave the join button permanently
+        // disabled with nothing on screen to explain it.
+        const disabled =
+          cause?.code === 'auth/admin-restricted-operation' ||
+          cause?.code === 'auth/operation-not-allowed';
+        setError(
+          disabled
+            ? "This game can't let players in yet. Ask your teacher to turn on anonymous sign-in for Hootka."
+            : "We couldn't get you in. Check your connection and try again.",
+        );
+        setLoading(false);
+      });
     });
     return stop;
   }, []);
 
-  return { uid, loading };
+  return { uid, loading, error };
 }
 
 /**

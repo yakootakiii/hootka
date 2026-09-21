@@ -9,8 +9,13 @@ In the [Firebase console](https://console.firebase.google.com):
 
 1. Create a project.
 2. **Authentication** → Sign-in method → enable **Email/Password**, **Google**,
-   and **Anonymous**. Anonymous is what gives each player a secure UID without
-   an account; without it nobody can join.
+   and **Anonymous**.
+
+   **Anonymous is not optional.** It is what gives each player a secure UID
+   without an account. With it off, the join screen accepts a game code and a
+   nickname and then the "Let's go!" button stays disabled, because the player
+   never gets an identity to join with. The screen now says so, but it is easy
+   to miss when enabling the other two.
 3. **Realtime Database** → create one. Note the region.
 4. **Firestore Database** → create one.
 5. **Storage** → create a bucket (only needed if you use question images).

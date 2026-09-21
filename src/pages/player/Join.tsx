@@ -14,7 +14,7 @@ import { Screen, Wordmark } from '@/components/Layout';
 export function Join() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
-  const { uid, loading } = useAnonymousUid();
+  const { uid, loading, error: authError } = useAnonymousUid();
 
   const [step, setStep] = useState<'code' | 'name'>('code');
   const [code, setCode] = useState(() => normalizeGameCode(params.get('code') ?? ''));
@@ -115,9 +115,13 @@ export function Join() {
         </form>
       )}
 
-      {error && (
-        <p id="join-error" role="alert" className="max-w-sm rounded-chunky bg-answer-red px-4 py-3 font-bold text-white">
-          {error}
+      {(error || authError) && (
+        <p
+          id="join-error"
+          role="alert"
+          className="max-w-sm rounded-chunky bg-answer-red px-4 py-3 font-bold text-white"
+        >
+          {error ?? authError}
         </p>
       )}
     </Screen>

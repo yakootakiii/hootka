@@ -11,5 +11,13 @@ export default defineConfig({
     },
   },
   server: { port: 5173, host: true },
-  build: { outDir: 'dist', sourcemap: true },
+  build: {
+    // Emitted to <repo root>/dist, not apps/web/dist. Vercel's Root Directory
+    // has to be the repo root for the /api routes to deploy, and its default
+    // output directory is "dist" relative to that - so this lands where both
+    // vercel.json and an untouched dashboard setting expect it.
+    outDir: fileURLToPath(new URL('../../dist', import.meta.url)),
+    emptyOutDir: true,
+    sourcemap: true,
+  },
 });

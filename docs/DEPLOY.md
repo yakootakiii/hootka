@@ -50,7 +50,12 @@ dashboard:
   serverless routes live in `/api` at the root and import shared game logic
   from `/packages/core`, and Vercel only deploys files inside the root
   directory.
-- **Framework preset:** Vite (or Other; `vercel.json` overrides it either way).
+- **Framework preset:** Vite.
+- **Build Command / Output Directory: leave both EMPTY.** A value typed into
+  either field overrides `vercel.json` silently, and the two then disagree -
+  which shows up as "No Output Directory named 'dist' found after the Build
+  completed" even though the build clearly succeeded. If you have ever typed a
+  command into those fields, clear them.
 - **Node version:** any supported version works. You will see
   `npm warn EBADENGINE` for `@hootka/functions`, which pins Node 20 because
   that is the Cloud Functions runtime. It is a warning about a package Vercel

@@ -27,7 +27,6 @@ export type GamePhase =
   | 'QUESTION_INTRO'
   | 'QUESTION_ACTIVE'
   | 'QUESTION_RESULT'
-  | 'LEADERBOARD'
   | 'FINAL_PODIUM'
   | 'ENDED';
 

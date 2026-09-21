@@ -3,8 +3,11 @@ import type { GamePhase, GameState } from './types.js';
 /**
  * The advance the host's "Next" button asks for.
  *
- * LOBBY -> QUESTION_INTRO -> QUESTION_ACTIVE -> QUESTION_RESULT -> LEADERBOARD
+ * LOBBY -> QUESTION_INTRO -> QUESTION_ACTIVE -> QUESTION_RESULT
  *       -> (next question | FINAL_PODIUM) -> ENDED
+ *
+ * QUESTION_RESULT carries the answer distribution and the ranking together, so
+ * the host presses Next once per question rather than twice.
  */
 export type AdvanceAction =
   | { type: 'noop'; reason: string }
@@ -47,9 +50,6 @@ export function nextAdvance({ state, skip = false }: AdvanceInput): AdvanceActio
       return go('QUESTION_RESULT');
 
     case 'QUESTION_RESULT':
-      return go('LEADERBOARD');
-
-    case 'LEADERBOARD':
       return isLastQuestion ? go('FINAL_PODIUM') : go('QUESTION_INTRO', questionIndex + 1);
 
     case 'FINAL_PODIUM':

@@ -11,9 +11,9 @@ describe('a full game', () => {
     game.join('u3', 'Cal');
   });
 
-  it('walks the phases in the order the spec defines', () => {
+  it('walks the phases in order, with one result screen per question', () => {
     const phases: string[] = [game.state.phase];
-    for (let i = 0; i < 12; i += 1) {
+    for (let i = 0; i < 20; i += 1) {
       const action = game.advance();
       if (action.type === 'noop') break;
       phases.push(action.phase);
@@ -21,10 +21,12 @@ describe('a full game', () => {
 
     expect(phases).toEqual([
       'LOBBY',
-      'QUESTION_INTRO', 'QUESTION_ACTIVE', 'QUESTION_RESULT', 'LEADERBOARD',
-      'QUESTION_INTRO', 'QUESTION_ACTIVE', 'QUESTION_RESULT', 'LEADERBOARD',
-      'QUESTION_INTRO', 'QUESTION_ACTIVE', 'QUESTION_RESULT', 'LEADERBOARD',
-    ].slice(0, phases.length));
+      'QUESTION_INTRO', 'QUESTION_ACTIVE', 'QUESTION_RESULT',
+      'QUESTION_INTRO', 'QUESTION_ACTIVE', 'QUESTION_RESULT',
+      'QUESTION_INTRO', 'QUESTION_ACTIVE', 'QUESTION_RESULT',
+      'FINAL_PODIUM',
+      'ENDED',
+    ]);
   });
 
   it('ends on the podium after the last question', () => {
@@ -50,7 +52,6 @@ describe('a full game', () => {
     expect(game.leaderboard().map((player) => player.name)).toEqual(['Ana', 'Ben', 'Cal']);
 
     // Q2 (correct = 1): Cal fastest, Ana wrong.
-    game.advance();
     game.openNextQuestion();
     expect(game.submit('u3', 1)).toEqual({ ok: true });
     game.tick(2_000);

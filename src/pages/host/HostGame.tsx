@@ -6,7 +6,7 @@ import {
 } from '@hootka/core';
 import { api } from '@/lib/firebase';
 import {
-  useGameMeta, useGameState, usePlayers, usePublicQuestion, useQuestionResult,
+  useAnsweredCount, useGameMeta, useGameState, usePlayers, usePublicQuestion, useQuestionResult,
 } from '@/hooks/useGameState';
 import { useServerClock } from '@/hooks/useServerTime';
 import { useSound } from '@/hooks/useSound';
@@ -65,7 +65,7 @@ export function HostGame() {
   );
 
   const advance = useCallback(
-    async (options: { skip?: boolean } = {}) => {
+    async (options: { skip?: boolean; expectPhase?: GamePhase } = {}) => {
       setBusy(true);
       setError(null);
       try {
@@ -87,13 +87,14 @@ export function HostGame() {
     return () => window.clearTimeout(timer);
   }, [phase, questionIndex, advance]);
 
+  // When the timer runs out the game moves itself to the result screen. The
+  // expectPhase guard means a click landing at the same moment cannot advance
+  // it twice.
   const closeAtTimeUp = useCallback(() => {
-    void api.closeQuestion({ gameId, questionIndex }).catch(() => {
-      // The scheduled fallback and advanceGame both re-close; losing this is safe.
-    });
-  }, [gameId, questionIndex]);
+    void advance({ expectPhase: 'QUESTION_ACTIVE' });
+  }, [advance]);
 
-  const answeredCount = players.filter((player) => player.answeredCount > questionIndex).length;
+  const answeredCount = useAnsweredCount(gameId, questionIndex);
 
   const downloadCsv = () => {
     const blob = new Blob([resultsToCsv(players)], { type: 'text/csv;charset=utf-8' });
@@ -196,13 +197,7 @@ export function HostGame() {
               options={question.options}
             />
           )}
-          <Button onClick={() => void advance()} disabled={busy}>Show ranking</Button>
-        </section>
-      )}
-
-      {phase === 'LEADERBOARD' && (
-        <section className="flex flex-1 flex-col gap-6">
-          <h1 className="text-center font-display text-4xl">Top 5</h1>
+          <h2 className="text-center font-display text-3xl">Top 5</h2>
           <Leaderboard entries={entries} limit={5} />
           <Button onClick={() => void advance()} disabled={busy} className="mt-auto">
             {questionIndex + 1 >= (state?.totalQuestions ?? 0) ? 'Show podium' : 'Next question'}

@@ -175,7 +175,6 @@ async function main() {
     const result = (await get(ref(rtdb, `games/${gameId}/results/${index}`))).val();
     check(`Q${index + 1} result reveals the answer`, result?.correctIndex === correct, JSON.stringify(result?.counts));
 
-    await callApi(advanceGame, hostToken, { gameId });   // -> LEADERBOARD
   }
 
   await callApi(advanceGame, hostToken, { gameId });     // -> PODIUM

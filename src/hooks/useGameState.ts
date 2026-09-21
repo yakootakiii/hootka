@@ -60,6 +60,18 @@ export function useMyPlayer(gameId: string | null, uid: string | null): Player |
   return raw && uid ? { uid, ...raw } : null;
 }
 
+/**
+ * How many players have answered the question currently open. Maintained by
+ * `submitAnswer` as a plain number, because the answers themselves are only
+ * readable by their own author.
+ */
+export function useAnsweredCount(gameId: string | null, questionIndex: number | null): number {
+  const value = useNode<number>(
+    gameId && questionIndex !== null ? `games/${gameId}/answerCounts/${questionIndex}` : null,
+  );
+  return typeof value === 'number' ? value : 0;
+}
+
 export function useGameMeta(gameId: string | null) {
   return useNode<{ code: string; status: string; hostUid: string; quizId: string }>(
     gameId ? `games/${gameId}/meta` : null,

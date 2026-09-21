@@ -235,11 +235,23 @@ export async function closeQuestionFor(gameId: string, questionIndex: number) {
   return { alreadyClosed: false as const, answeredCount: scored.length };
 }
 
-export async function advanceGame(caller: Caller, gameId: string, skip: boolean) {
+export async function advanceGame(
+  caller: Caller,
+  gameId: string,
+  skip: boolean,
+  expectPhase?: string,
+) {
   const meta = await assertHostOf(gameId, caller.uid);
   const game = gameRef(gameId);
   const state = (await game.child('state').get()).val() as GameState | null;
   if (!state) throw notFound('That game has no state.');
+
+  // The host screen advances automatically when the timer runs out, and the
+  // host can also click. Whoever loses the race must not push the game on a
+  // second time, so a caller may say which phase it believed it was leaving.
+  if (expectPhase && state.phase !== expectPhase) {
+    return { phase: state.phase, questionIndex: state.questionIndex, skipped: true };
+  }
 
   const action = nextAdvance({ state, skip });
   if (action.type === 'noop') throw badRequest(action.reason);
@@ -260,6 +272,7 @@ export async function advanceGame(caller: Caller, gameId: string, skip: boolean)
     updates.publicQuestion = toPublicQuestion(question);
     updates['state/questionStartedAt'] = null;
     updates['meta/status'] = 'running';
+    updates[`answerCounts/${action.questionIndex}`] = 0;
   }
   if (action.openWindow) updates['state/questionStartedAt'] = ServerValue.TIMESTAMP;
   if (action.phase === 'ENDED') {
@@ -348,6 +361,17 @@ export async function submitAnswer(
   if (!result.committed) {
     throw conflict('You already answered this question.', 'already_answered');
   }
+
+  // A plain count the host screen can watch live. The answers themselves stay
+  // unreadable to everyone but their own author, so the host cannot see who
+  // picked what until the question closes.
+  await game
+    .child(`answerCounts/${questionIndex}`)
+    .set(ServerValue.increment(1) as unknown as number)
+    .catch(() => {
+      // The tally is only a progress indicator; never fail an answer over it.
+    });
+
   return { ok: true, choice };
 }
 

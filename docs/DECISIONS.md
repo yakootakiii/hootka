@@ -75,6 +75,24 @@ work on slow 4G; this is most of that requirement.
 API instead of audio files: nothing to download, nothing to cache, and they stay
 gentle by construction. Muted until someone turns them on, as specified.
 
+**One result screen per question, not two.** The spec's state machine has
+`QUESTION_RESULT` and `LEADERBOARD` as separate phases. They are merged: the
+answer distribution, the top five and the Next button share one screen, and the
+player sees their feedback and their new rank together. A host running a
+20-question quiz presses Next 20 times rather than 40, and the class sees the
+ranking while the distribution is still on screen, which is when they care.
+
+**The answered tally is a counter, not a count of the answers.** The host screen
+shows "x of y answered" live during a question. The answers themselves are
+readable only by their own author - that is what stops a player inspecting what
+others picked - so `submitAnswer` also increments a plain number at
+`answerCounts/<questionIndex>` that anyone in the game may read.
+
+**The timer advances the game, the host does not have to.** When the countdown
+reaches zero the host screen calls `advanceGame` itself. Because a click can
+land at the same moment, the call carries the phase it believed it was leaving
+and the server ignores it if the game has already moved on.
+
 ## Not built yet
 
 - Drag-to-reorder in the quiz editor. Reordering works today with up/down

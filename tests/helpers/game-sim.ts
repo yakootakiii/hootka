@@ -160,7 +160,7 @@ export class GameSim {
 
   /** Run through intro to an open answer window in one step. */
   openNextQuestion() {
-    if (this.state.phase === 'LOBBY' || this.state.phase === 'LEADERBOARD') this.advance();
+    if (this.state.phase === 'LOBBY' || this.state.phase === 'QUESTION_RESULT') this.advance();
     if (this.state.phase === 'QUESTION_INTRO') this.advance();
     return this.state;
   }

@@ -79,8 +79,7 @@ describe('a full class of players', () => {
         game.tick(20);
         game.submit(`u${i}`, i % 3 === 0 ? correct : (correct + 1) % 4);
       }
-      game.advance(); // -> RESULT (scores)
-      game.advance(); // -> LEADERBOARD
+      game.advance(); // -> RESULT (scores and ranks)
     }
 
     const csv = resultsToCsv(game.leaderboard());

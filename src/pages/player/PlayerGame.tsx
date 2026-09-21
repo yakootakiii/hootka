@@ -146,7 +146,7 @@ export function PlayerGame() {
       case 'QUESTION_RESULT':
         return (
           <Centered>
-            <Mascot mood={correct ? 'cheering' : 'sad'} className="h-40 w-40" />
+            <Mascot mood={correct ? 'cheering' : 'sad'} className="h-32 w-32" />
             <h1 className="font-display text-5xl">{feedbackHeadline(correct, points)}</h1>
             {correct && <p className="font-display text-4xl">+{formatPoints(points)}</p>}
             <p className="text-xl opacity-90">{feedbackSubline(correct, me?.streak ?? 0)}</p>
@@ -156,22 +156,17 @@ export function PlayerGame() {
               </p>
             )}
             {!myAnswer && result && <p className="text-xl opacity-90">Time's up - no answer this round.</p>}
-          </Centered>
-        );
 
-      case 'LEADERBOARD':
-        return (
-          <Centered>
-            <p className="text-xl opacity-90">You are</p>
-            <div className="flex items-center gap-3">
-              <span className="font-display text-7xl">{ordinal(me?.rank ?? 0)}</span>
-              {me && <RankArrow change={rankChangeFor(me.rank, me.prevRank)} />}
+            {/* The ranking used to be a screen of its own; it now lands here. */}
+            <div className="mt-2 flex flex-col items-center gap-1 border-t border-white/25 pt-4">
+              <p className="opacity-90">You are</p>
+              <div className="flex items-center gap-3">
+                <span className="font-display text-6xl">{ordinal(me?.rank ?? 0)}</span>
+                {me && <RankArrow change={rankChangeFor(me.rank, me.prevRank)} />}
+              </div>
+              <p className="font-display text-2xl">{formatPoints(me?.score ?? 0)} points</p>
+              {me?.rank === 1 && <p className="opacity-90">You are in the lead!</p>}
             </div>
-            <p className="font-display text-3xl">{formatPoints(me?.score ?? 0)} points</p>
-            {me && me.rank > 1 && (
-              <p className="text-lg opacity-90">Keep going - you are closing in!</p>
-            )}
-            {me?.rank === 1 && <p className="text-lg opacity-90">You are in the lead!</p>}
           </Centered>
         );
 

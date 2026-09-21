@@ -26,7 +26,7 @@ describe('canAcceptAnswer', () => {
   });
 
   it('rejects an answer sent outside the active phase', () => {
-    expect(canAcceptAnswer(input({ phase: 'LEADERBOARD' }))).toEqual({
+    expect(canAcceptAnswer(input({ phase: 'QUESTION_RESULT' }))).toEqual({
       ok: false,
       reason: 'wrong_phase',
     });
@@ -75,6 +75,17 @@ describe('canAcceptAnswer', () => {
     expect(canAcceptAnswer(input({ now: T0 + 6_500, timeLimitMs: 5_000 }))).toEqual({
       ok: false,
       reason: 'too_late',
+    });
+  });
+});
+
+describe('answers stop counting once the result is up', () => {
+  // The result screen now also carries the ranking, so it is the only phase a
+  // late tap can land in after the window closes.
+  it('rejects an answer sent while the result is showing', () => {
+    expect(canAcceptAnswer(input({ phase: 'QUESTION_RESULT', now: T0 + 500 }))).toEqual({
+      ok: false,
+      reason: 'wrong_phase',
     });
   });
 });

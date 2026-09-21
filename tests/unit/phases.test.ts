@@ -32,19 +32,17 @@ describe('nextAdvance', () => {
     expect(fromActive).toMatchObject({ phase: 'QUESTION_RESULT', openWindow: false });
   });
 
-  it('shows the result then the leaderboard', () => {
-    expect(nextAdvance({ state: state('QUESTION_RESULT') })).toMatchObject({ phase: 'LEADERBOARD' });
-  });
-
-  it('moves to the next question from the leaderboard', () => {
-    expect(nextAdvance({ state: state('LEADERBOARD', 0, 3) })).toMatchObject({
+  // The distribution and the ranking share one screen, so there is a single
+  // Next press per question.
+  it('moves straight from the result to the next question', () => {
+    expect(nextAdvance({ state: state('QUESTION_RESULT', 0, 3) })).toMatchObject({
       phase: 'QUESTION_INTRO',
       questionIndex: 1,
     });
   });
 
   it('goes to the podium after the last question', () => {
-    expect(nextAdvance({ state: state('LEADERBOARD', 2, 3) })).toMatchObject({
+    expect(nextAdvance({ state: state('QUESTION_RESULT', 2, 3) })).toMatchObject({
       phase: 'FINAL_PODIUM',
       questionIndex: 2,
     });
@@ -80,9 +78,26 @@ describe('nextAdvance', () => {
   });
 
   it('handles a single-question quiz', () => {
-    expect(nextAdvance({ state: state('LEADERBOARD', 0, 1) })).toMatchObject({
+    expect(nextAdvance({ state: state('QUESTION_RESULT', 0, 1) })).toMatchObject({
       phase: 'FINAL_PODIUM',
     });
+  });
+});
+
+describe('one result screen per question', () => {
+  // The distribution, the ranking and the Next button now share a screen, so a
+  // three-question game takes three presses after the questions, not six.
+  it('needs one advance per question after the answer window', () => {
+    let current = state('QUESTION_ACTIVE', 0, 3) as ReturnType<typeof state>;
+    const seen: GamePhase[] = [];
+    for (let i = 0; i < 10; i += 1) {
+      const action = nextAdvance({ state: current });
+      if (action.type === 'noop') break;
+      seen.push(action.phase);
+      current = state(action.phase, action.questionIndex, 3);
+      if (action.phase === 'QUESTION_INTRO') break;
+    }
+    expect(seen).toEqual(['QUESTION_RESULT', 'QUESTION_INTRO']);
   });
 });
 
@@ -90,7 +105,7 @@ describe('phase predicates', () => {
   it('accepts answers only while a question is active', () => {
     const phases: GamePhase[] = [
       'LOBBY', 'QUESTION_INTRO', 'QUESTION_ACTIVE', 'QUESTION_RESULT',
-      'LEADERBOARD', 'FINAL_PODIUM', 'ENDED',
+      'FINAL_PODIUM', 'ENDED',
     ];
     expect(phases.filter(acceptsAnswers)).toEqual(['QUESTION_ACTIVE']);
   });

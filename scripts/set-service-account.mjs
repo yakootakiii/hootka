@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Puts a Firebase service account key into apps/web/.env.production.local.
+ * Puts a Firebase service account key into .env.production.local.
  *
  *   npm run set-service-account -- ~/Downloads/hootka-firebase-adminsdk-xxxxx.json
  *
@@ -10,7 +10,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-const ENV_FILE = resolve('apps/web/.env.production.local');
+const ENV_FILE = resolve('.env.production.local');
 const source = process.argv[2];
 
 if (!source) {
@@ -54,4 +54,4 @@ writeFileSync(ENV_FILE, env);
 console.log(`Wrote FIREBASE_SERVICE_ACCOUNT (${encoded.length} chars, base64).`);
 console.log(`  project : ${key.project_id}`);
 console.log(`  account : ${key.client_email}`);
-console.log(`\nNext: import apps/web/.env.production.local into Vercel and redeploy.`);
+console.log(`\nNext: import .env.production.local into Vercel and redeploy.`);

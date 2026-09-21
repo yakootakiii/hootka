@@ -46,10 +46,10 @@ Hootka uses on Firebase.
 `vercel.json` in the repo root already sets the build for you. In the Vercel
 dashboard:
 
-- **Root Directory:** the repository root. It must NOT be `apps/web`: the
-  serverless routes live in `/api` at the root and import shared game logic
-  from `/packages/core`, and Vercel only deploys files inside the root
-  directory.
+- **Root Directory:** leave it alone. The project is a single package at the
+  repository root, so there is no workspace for Vercel to auto-select and
+  nothing to configure. (It used to be a monorepo, and Vercel kept picking
+  `apps/web` as the root, which left the `/api` routes undeployed.)
 - **Framework preset:** Vite.
 - **Build Command / Output Directory: leave both EMPTY.** A value typed into
   either field overrides `vercel.json` silently, and the two then disagree -
@@ -61,10 +61,10 @@ dashboard:
   that is the Cloud Functions runtime. It is a warning about a package Vercel
   never builds, and it is safe to ignore.
 - **Environment Variables** → click **Import** and upload
-  `apps/web/.env.production.local`, which you fill in first:
+  `.env.production.local`, which you fill in first:
 
   ```bash
-  cp apps/web/.env.example apps/web/.env.production.local
+  cp .env.example .env.production.local
   # then edit it - each key says where in the Firebase console to find it
   ```
 
@@ -86,62 +86,25 @@ the first deploy or redeploy afterwards.
 `/play/<gameId>` would 404 on refresh, and refreshing to rejoin is something
 players do constantly.
 
-### If the build fails to find its tools
+### Layout
 
-Two failures are possible here, and both come from the same place. npm installs
-tool binaries only into the **root** `node_modules/.bin` - `apps/web/node_modules/.bin`
-does not exist at all - so anything that relies on npm putting an ancestor bin
-directory on PATH is fragile, and npm 11 on Vercel does not do it.
+The repo is deliberately a single package at the root: `src` is the app,
+`src/core` the shared game rules, `api` the serverless routes. It was a
+monorepo (`apps/web` + `packages/core`), but Vercel auto-detects npm workspaces
+and kept selecting `apps/web` as the Root Directory, which silently left the
+`/api` routes out of the deployment. With one package there is nothing to
+auto-select.
 
-The repo now avoids the problem from both directions:
+`vercel.json` sets the build and output, and every path in it is relative to
+the repository root. If a deploy ever fails with "No Output Directory named
+'dist' found", check whether a Build Command or Output Directory has been typed
+into the dashboard - those override `vercel.json`.
 
-- every workspace script calls its tool through `npx`, which finds the binary by
-  walking up `node_modules` rather than by reading PATH;
-- `npm run build` means "build the web app" in the repo root *and* in
-  `apps/web`, so it works wherever Vercel runs it;
-- there is a `vercel.json` in both places, and Vercel reads whichever one sits
-  in your configured Root Directory.
+## 3b. Firebase Hosting?
 
-So either Root Directory works. If you want to be deliberate, `apps/web` is the
-conventional choice for a monorepo and is what Vercel usually auto-detects;
-leave the Build Command field in the dashboard **empty** so `vercel.json`
-decides, rather than pinning a command that only works in one directory.
-
-For the same reason the Tailwind and PostCSS configs resolve their paths
-relative to themselves rather than to `process.cwd()`.
-
-## 3b. Frontend on Firebase Hosting instead
-
-```bash
-npm run build -w @hootka/web
-firebase deploy --only hosting
-```
-
-`firebase.json` already points at `apps/web/dist` with the same SPA rewrite.
-For this path put the seven variables in `apps/web/.env.production.local`
-rather than in a dashboard.
-
-## The server routes
-
-`/api/*.ts` are Vercel serverless functions - one per operation, sharing the
-game logic in `/api/_lib/game.ts`. They are same-origin with the app, so there
-is no CORS to configure, and the browser sends its Firebase ID token as a
-bearer token which each route verifies with the Admin SDK.
-
-Two of them are worth knowing about:
-
-- `submitAnswer` records a choice with a server timestamp and never scores.
-  `closeQuestion` scores every player at once, so all 50 are judged against the
-  same clock.
-- `cleanupGames` replaces the scheduled Cloud Function. `vercel.json` runs it
-  daily at 03:00 UTC and Vercel sends `CRON_SECRET` as a bearer token; nothing
-  else can trigger a bulk delete.
-
-**Function region.** On Vercel's Hobby plan the routes run in one region,
-usually `iad1` (US East), while the Realtime Database is in `asia-southeast1`.
-Every route reads or writes the game node, so each call crosses the Pacific.
-It works, but if games feel sluggish, set the region under Project Settings ->
-Functions to the one nearest your database.
+Not supported any more. The server logic runs as Vercel serverless routes in
+`/api`, which Firebase Hosting cannot serve: you would get the front end and
+every game action would fail.
 
 ## 4. Authorize your domain (easy to miss)
 
@@ -175,9 +138,9 @@ is otherwise a silent blank page.
 
 | File | Loaded in | Purpose |
 |---|---|---|
-| `apps/web/.env.development.local` | `npm run dev` only | Emulator config. Committed; holds no secrets. |
-| `apps/web/.env.production.local` | production builds | Your real project, if you are not using a host's dashboard. Not committed. |
-| `apps/web/.env.example` | never | The list of variables to copy. |
+| `.env.development.local` | `npm run dev` only | Emulator config. Committed; holds no secrets. |
+| `.env.production.local` | production builds | Your real project, if you are not using a host's dashboard. Not committed. |
+| `.env.example` | never | The list of variables to copy. |
 
 The emulator config is deliberately `.env.development.local` and not
 `.env.local`: Vite loads `.env.local` in *every* mode, so a variable you forgot

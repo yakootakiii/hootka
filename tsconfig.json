@@ -19,7 +19,7 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
-      "@hootka/core": ["../../packages/core/src/index.ts"]
+      "@hootka/core": ["./src/core/index.ts"]
     }
   },
   "include": ["src", "vite.config.ts"]

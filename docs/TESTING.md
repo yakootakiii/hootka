@@ -7,7 +7,7 @@ npm run test:coverage # thresholds at 70%; core sits at 99%
 
 | Suite | What it covers |
 |---|---|
-| `tests/unit` | The rules in `packages/core`, one module at a time. |
+| `tests/unit` | The rules in `src/core`, one module at a time. |
 | `tests/integration` | Whole games played through `GameSim`, an in-memory stand-in for the database and the functions that runs the real core modules. |
 | `tests/ui` | Components in jsdom, with the accessibility requirements asserted. |
 | `tests/e2e` | A whole game against the running emulators: real Cloud Functions, real server timestamps, real security rules. `npm run e2e`. |

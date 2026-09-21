@@ -3,37 +3,55 @@
   "private": true,
   "version": "0.1.0",
   "description": "Hootka - a kid-friendly live quiz game",
-  "workspaces": [
-    "packages/core",
-    "apps/web"
-  ],
+  "type": "module",
   "scripts": {
-    "dev": "vite apps/web",
-    "build": "npm run build:web",
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "typecheck": "tsc --noEmit -p packages/core/tsconfig.json && tsc --noEmit -p apps/web/tsconfig.json && tsc --noEmit -p tsconfig.api.json",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.api.json",
     "emulators": "firebase emulators:start",
-    "loadtest": "tsx tests/load/simulate-players.ts",
     "e2e": "tsx tests/e2e/play-a-game.ts",
+    "loadtest": "tsx tests/load/simulate-players.ts",
     "demo:open": "tsx scripts/demo-game.ts open",
     "demo:next": "tsx scripts/demo-game.ts advance",
-    "build:web": "tsc --noEmit -p apps/web/tsconfig.json && vite build apps/web",
     "set-service-account": "node scripts/set-service-account.mjs"
   },
+  "dependencies": {
+    "canvas-confetti": "^1.9.3",
+    "firebase": "^11.0.2",
+    "firebase-admin": "^12.7.0",
+    "framer-motion": "^11.11.17",
+    "howler": "^2.2.4",
+    "qrcode.react": "^4.1.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.28.0"
+  },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.0.1",
+    "@testing-library/user-event": "^14.5.2",
+    "@types/canvas-confetti": "^1.6.4",
+    "@types/howler": "^2.2.12",
     "@types/node": "^20.14.0",
-    "@vercel/node": "^13.0.1",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vercel/node": "^3.2.29",
+    "@vitejs/plugin-react": "^4.3.3",
     "@vitest/coverage-v8": "^2.1.9",
-    "tsx": "^4.23.15",
+    "autoprefixer": "^10.4.20",
+    "jsdom": "^25.0.1",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.15",
+    "tsx": "^4.19.2",
     "typescript": "^5.6.3",
+    "vite": "^5.4.11",
     "vitest": "^2.1.9"
   },
   "engines": {
     "node": ">=20"
-  },
-  "dependencies": {
-    "firebase-admin": "^12.7.0"
   }
 }

@@ -28,12 +28,12 @@ later is an additive change, not a rewrite.
 
 ## Judgment calls made while building
 
-**A shared `packages/core`.** Scoring, ranking, the phase machine, the nickname
+**A shared `src/core`.** Scoring, ranking, the phase machine, the nickname
 filter and the answer guard are pure functions in one package, imported by both
-the Cloud Functions and the React app. The client and the server cannot drift
-apart about the rules, and every rule is testable without Firebase. Functions
-are bundled with esbuild at deploy time, so the workspace dependency does not
-have to survive `npm install` inside `functions/`.
+the serverless API routes and the React app. The client and the server cannot drift
+apart about the rules, and every rule is testable without Firebase. It started as a workspace package; the
+project is now a single package at the root, because Vercel auto-detects npm
+workspaces and kept deploying only `apps/web`, leaving the API routes out.
 
 **The streak bonus starts on the second consecutive correct answer.** The spec
 says "+50 per consecutive correct answer, capped at +200" without fixing where
@@ -67,7 +67,7 @@ more digits are exempt from leet-mapping - without that rule, "Player 45" folds
 to "...as" and a whole class gets blocked one nickname at a time.
 
 **The host bundle is loaded lazily.** Firestore and Storage live in
-`lib/firebase-host.ts` and the host routes are `React.lazy`, so a player joining
+`src/lib/firebase-host.ts` and the host routes are `React.lazy`, so a player joining
 on a phone downloads 179 kB gzipped instead of 280 kB. The spec asks the game to
 work on slow 4G; this is most of that requirement.
 

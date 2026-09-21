@@ -9,22 +9,22 @@ Built from `quiz-game-spec.md`. Hootka is the owl who hosts the game.
 ## Where things are
 
 ```
-packages/core     Pure game logic: scoring, ranking, phases, the nickname
+src/core          Pure game logic: scoring, ranking, phases, the nickname
                   filter, the answer guard. No Firebase, no React - which is
                   why it can be tested exhaustively and why the server and the
                   client can never disagree about the rules.
+src               React 18 + Vite + Tailwind + Framer Motion.
 api               Vercel serverless routes (TypeScript). Everything a player
                   must not be able to forge: joining, answering, scoring,
                   advancing. Same-origin with the app, so no CORS.
-apps/web          React 18 + Vite + Tailwind + Framer Motion.
 tests             Vitest: unit, integration and component tests, plus the
-                  emulator load test.
+                  emulator end-to-end game and the load test.
 *.rules / *.json  Firebase security rules and project config.
 ```
 
 ## Running it
 
-`apps/web/.env.local` ships pointing at a `demo-hootka` project, which is a
+`.env.production.local` ships pointing at a `demo-hootka` project, which is a
 Firebase convention: the emulators accept it with no login and it can never
 reach a real project. So this works straight after a clone:
 
@@ -35,7 +35,7 @@ npm run dev              # the web app on http://localhost:5173
 npm run e2e              # plays a whole game against the emulators
 ```
 
-To point at a real project, put its values in `apps/web/.env.local`, set the
+To point at a real project, put its values in `.env.production.local`, set the
 project id in `.firebaserc`, and drop `VITE_USE_EMULATORS`. Cloud Functions need
 the Blaze plan to deploy; the emulators need nothing.
 

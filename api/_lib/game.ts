@@ -19,7 +19,7 @@ import {
   type Player,
   type PublicQuestion,
   type Question,
-} from '../../packages/core/src/index.js';
+} from '../../src/core/index.js';
 import { ServerValue } from 'firebase-admin/database';
 import { codeRef, firestore, gameRef, rtdb } from './admin.js';
 import { badRequest, conflict, forbidden, gone, notFound, tooMany, type Caller } from './http.js';

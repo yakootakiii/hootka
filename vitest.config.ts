@@ -6,8 +6,8 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      '@hootka/core': fileURLToPath(new URL('./packages/core/src/index.ts', import.meta.url)),
-      '@': fileURLToPath(new URL('./apps/web/src', import.meta.url)),
+      '@hootka/core': fileURLToPath(new URL('./src/core/index.ts', import.meta.url)),
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
   test: {
@@ -19,16 +19,10 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reportsDirectory: './coverage',
-      include: ['packages/core/src/**', 'apps/web/src/lib/**', 'apps/web/src/components/**'],
-      // The Firebase wiring is configuration, not logic: it is covered by the
-      // emulator load test rather than by unit tests.
-      exclude: ['**/*.d.ts', 'apps/web/src/lib/firebase.ts', 'apps/web/src/lib/firebase-host.ts'],
-      thresholds: {
-        lines: 70,
-        functions: 70,
-        branches: 70,
-        statements: 70,
-      },
+      include: ['src/core/**', 'src/lib/**', 'src/components/**'],
+      // The Firebase wiring is configuration, not logic.
+      exclude: ['**/*.d.ts', 'src/lib/firebase.ts', 'src/lib/firebase-host.ts'],
+      thresholds: { lines: 70, functions: 70, branches: 70, statements: 70 },
     },
   },
 });
